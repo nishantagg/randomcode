@@ -802,5 +802,56 @@ def test_check_dfs_location(_framework_context, spark_session_):
     conf =  spark_session_.sparkContext._jsc.hadoopConfiguration()
     fs = spark_session_.sparkContext._jvm.org.apache.hadoop.fs.FileSystem.get(conf)
     exists = fs.exists(spark_session_.sparkContext._jvm.org.apache.hadoop.fs.Path("/tmp/data/a001fc_acct_detl_lending_deposit_rates_reference"))
-
     print(exists)
+	
+	
+
+def test_Appending_To_ARRAY_ELEMENT_AND_GROUPING_process(spark_session_):
+    data = [("X", "20201007201221"),
+            ("X", "20201204010101"),
+            ("D", "20200703235959"),
+            ("D", "20201104000001"),
+            ("D", "20201124101010"),
+            ("D", "20191111101540"),
+            ("D", "20191108163914")
+            ]
+    schema = StructType([
+        StructField("depositRates_34", StringType(), True),
+        StructField("lendingRates_bew", StringType(), True),
+
+    ])
+    df = spark_session_.createDataFrame(data=data, schema=schema)\
+        .withColumn("json_col", F.to_json(F.array(F.struct(
+        F.lit("FIXED").alias("depositRateType"),
+        F.lit(4.12).cast(StringType()).alias("rate"),
+        F.lit('MON').alias("calculationFrequency"),
+        F.lit('TUY').alias("applicationFrequency"),
+        F.lit(0.234).alias("IntegerColumn"),\
+        F.array(F.struct(
+            (F.lit("")).alias("name"),
+            (F.lit("")).alias("unitOfMeasure"),
+            (F.lit("")).alias("minimumValue"),
+            (F.lit("")).alias("maximumValue"),
+            (F.lit("")).alias("rateApplicationMethod"),
+            F.struct(
+                (F.lit("")).alias("additionalInfo"),
+                (F.lit("")).alias("additionalInfoUri")
+            ).alias("applicabilityConditions"),
+            (F.lit("")).alias("additionalInfo"),
+            (F.lit("")).alias("additionalInfoUri")
+        )).alias("tiers"),
+        F.lit("").alias("additionalValue"),
+        F.lit("").alias("additionalInfo"),
+        F.lit("").alias("additionalInfoUri")))))
+    df.show(5, False)
+
+
+    df.select(F.col("json_col"), F.col("depositRates_34"),F.col("additionalValue"),F.col("additionalInfo"),F.col("additionalInfoUri"))\
+        .groupBy(F.col("depositRates_34"),F.col("additionalValue"),F.col("additionalInfo"),F.col("additionalInfoUri"))\
+        .agg(F.collect_list("json_col").alias("depositRates"))\
+        .select(F.col("additionalValue"),F.col("additionalInfo"),F.col("additionalInfoUri"),F.to_json(F.struct(F.col("depositRates")))).show(5, False)
+
+
+
+
+
